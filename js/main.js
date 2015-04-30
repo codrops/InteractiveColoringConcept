@@ -8,22 +8,23 @@
  * Copyright 2015, Codrops
  * http://www.codrops.com
  */
-(function() {
-
+ (function() {
+	//The Document.documentElement read-only property returns the Element that is the root element of the document (for example, the <html> element for HTML documents).
 	var docElem = window.document.documentElement,
 		// transition end event name
+		//The transitionend event is fired when a CSS transition has completed. In the case where a transition is removed before completion, such as if the transition-property is removed, then the event will not fire.
 		transEndEventNames = { 'WebkitTransition': 'webkitTransitionEnd', 'MozTransition': 'transitionend', 'OTransition': 'oTransitionEnd', 'msTransition': 'MSTransitionEnd', 'transition': 'transitionend' },
 		transEndEventName = transEndEventNames[ Modernizr.prefixed( 'transition' ) ];
 
-	function scrollX() { return window.pageXOffset || docElem.scrollLeft; }
-	function scrollY() { return window.pageYOffset || docElem.scrollTop; }
-	function getOffset(el) {
-		var offset = el.getBoundingClientRect();
-		return { top : offset.top + scrollY(), left : offset.left + scrollX() };
-	}
+		function scrollX() { return window.pageXOffset || docElem.scrollLeft; }
+		function scrollY() { return window.pageYOffset || docElem.scrollTop; }
+		function getOffset(el) {
+			var offset = el.getBoundingClientRect();
+			return { top : offset.top + scrollY(), left : offset.left + scrollX() };
+		}
 
-	function dragMoveListener(event) {
-		var target = event.target,
+		function dragMoveListener(event) {
+			var target = event.target,
 			// keep the dragged position in the data-x/data-y attributes
 			x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx,
 			y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
@@ -49,7 +50,6 @@
 			var info = document.querySelector('.info-wrap');
 			info.parentNode.removeChild(info);
 		});
-
 		// target elements with the "drag-element" class
 		interact('.drag-element').draggable({
 			// enable inertial throwing
@@ -80,6 +80,9 @@
 				if(classie.has(event.target, 'paint-area--text')) {
 					type = 'text';
 				}
+				if(classie.has(event.target, 'paint-area--svg')) {
+					type = 'svg';
+				}
 
 				var draggableElement = event.relatedTarget;
 
@@ -87,7 +90,7 @@
 
 				var onEndTransCallbackFn = function(ev) {
 					this.removeEventListener( transEndEventName, onEndTransCallbackFn );
-					if( type === 'area' ) {
+					if( type === 'area' || type === 'svg') {
 						paintArea(event.dragEvent, event.target, draggableElement.getAttribute('data-color'));
 					}
 					setTimeout(function() {
@@ -112,13 +115,21 @@
 
 	function paintArea(ev, el, color) {
 		var type = 'area';
+
 		if(classie.has(el, 'paint-area--text')) {
 			type = 'text';
 		}
+		if(classie.has(el, 'paint-area--svg')) {
+			type = 'svg';
+		}
 
-		if( type === 'area' ) {
+		console.log(type);
+
+
+		if( type === 'area' || type === 'svg' ) {
 			// create SVG element
 			var dummy = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+			//setAttributeNS adds a new attribute or changes the value of an attribute with the given namespace and name.
 			dummy.setAttributeNS(null, 'version', '1.1');
 			dummy.setAttributeNS(null, 'width', '100%');
 			dummy.setAttributeNS(null, 'height', '100%');
@@ -132,15 +143,14 @@
 			circle.setAttributeNS(null, 'cy', 0);
 			circle.setAttributeNS(null, 'r', Math.sqrt(Math.pow(el.offsetWidth,2) + Math.pow(el.offsetHeight,2)));
 			circle.setAttributeNS(null, 'fill', color);
-
 			dummy.appendChild(g);
 			g.appendChild(circle);
 			el.appendChild(dummy);
 		}
 
 		setTimeout(function() {
-			classie.add(el, 'paint--active');
 
+			classie.add(el, 'paint--active');
 			if( type === 'text' ) {
 				el.style.color = color;
 				var onEndTransCallbackFn = function(ev) {
@@ -150,6 +160,22 @@
 				};
 
 				el.addEventListener(transEndEventName, onEndTransCallbackFn);
+			} else if( type === 'svg') {
+				var changeFill = function() {
+					// if( ev.target != this) return;
+					this.removeEventListener(transEndEventName, onEndTransCallbackFn);
+					// set the color
+					el.setAttribute("fill", color);
+					el.setAttribute("stroke", color);
+					// remove SVG element
+					el.removeChild(dummy);
+					setTimeout(function() { classie.remove(el, 'paint--active'); }, 25);
+				};
+				el.style.transition = el.style.MSTransitionEnd = el.style.OTransition= el.style.MozTransition = el.style.WebkitTransition = "none";
+				el.style.transition = el.style.MSTransitionEnd = el.style.OTransition= el.style.MozTransition = el.style.WebkitTransition = "fill 0.4s ease-in-out, stroke 0.4s ease-in-out";
+				setTimeout(function(){changeFill();}, 200);
+
+
 			}
 			else {
 				var onEndTransCallbackFn = function(ev) {
@@ -166,14 +192,18 @@
 				circle.addEventListener(transEndEventName, onEndTransCallbackFn);
 			}
 		}, 25);
-	}
+}
 
-	function resetColors() {
-		[].slice.call(document.querySelectorAll('.paint-area')).forEach(function(el) {
+function resetColors() {
+	[].slice.call(document.querySelectorAll('.paint-area')).forEach(function(el) {
 			el.style[classie.has(el, 'paint-area--text') ? 'color' : 'background-color'] = '';
-		});
-	}
+			el.setAttribute('fill', " #fafafa");
+			el.setAttribute('stroke', " #999999");
+			
 
-	init();
+		});
+}
+
+init();
 
 })();
